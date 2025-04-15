@@ -1,6 +1,3 @@
-const canvas = document.getElementById('JogoCanvas');
-const ctx = canvas.getContext('2d');
-
 class Entidade {
     constructor(x, y, largura, altura, cor) {
         this.x = x;
@@ -8,11 +5,6 @@ class Entidade {
         this.largura = largura;
         this.altura = altura;
         this.cor = cor;
-    }
-
-    desenhar() {
-        ctx.fillStyle = this.cor;
-        ctx.fillRect(this.x, this.y, this.largura, this.altura);
     }
 
     colidiuCom(outro) {
@@ -26,18 +18,29 @@ class Entidade {
 }
 
 class Jogador extends Entidade {
-    constructor() {
-        super(canvas.width / 2 - 25, canvas.height - 60, 50, 50, 'blue');
+    constructor(canvas) {
+        super(canvas.width / 2 - 25, canvas.height - 60, 50, 50, 'white');
+        this.canvas = canvas;
         this.velocidade = 5;
     }
 
     mover(direcao) {
         if (direcao === 'esquerda' && this.x > 0) this.x -= this.velocidade;
-        if (direcao === 'direita' && this.x + this.largura < canvas.width) this.x += this.velocidade;
+        if (direcao === 'direita' && this.x + this.largura < this.canvas.width) this.x += this.velocidade;
     }
 
     atirar() {
-        return new Projetil(this.x + this.largura / 2 - 2.5, this.y, 5, 15, 'yellow', -7);
+        return new Projetil(this.x + this.largura / 2 - 2.5, this.y, 5, 15, 'red', -7);
+    }
+
+    desenhar(ctx) {
+        ctx.fillStyle = this.cor;
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.largura / 2, this.y);
+        ctx.lineTo(this.x, this.y + this.altura);
+        ctx.lineTo(this.x + this.largura, this.y + this.altura);
+        ctx.closePath();
+        ctx.fill();
     }
 }
 
@@ -50,6 +53,11 @@ class Projetil extends Entidade {
     atualizar() {
         this.y += this.velocidade;
     }
+
+    desenhar(ctx) {
+        ctx.fillStyle = this.cor;
+        ctx.fillRect(this.x, this.y, this.largura, this.altura);
+    }
 }
 
 class Alien extends Entidade {
@@ -61,90 +69,105 @@ class Alien extends Entidade {
     atualizar() {
         this.y += this.velocidade;
     }
+
+    desenhar(ctx) {
+        ctx.fillStyle = this.cor;
+        ctx.beginPath();
+        ctx.arc(this.x + this.largura / 2, this.y + this.altura / 2, this.largura / 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
 }
 
+class Jogo {
+    constructor(canvasId, imagemFundoSrc) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.imagemFundo = new Image();
+        this.imagemFundo.src = imagemFundoSrc;
 
-const jogador = new Jogador();
-let projeteis = [];
-let aliens = [];
-let teclas = {};
-let gameOver = false;
-let pontuacao = 0;
+        this.jogador = new Jogador(this.canvas);
+        this.projeteis = [];
+        this.aliens = [];
+        this.teclas = {};
+        this.pontuacao = 0;
+        this.gameOver = false;
 
-
-document.addEventListener('keydown', (e) => {
-    teclas[e.key.toLowerCase()] = true;
-    if (e.code === 'Space') {
-        projeteis.push(jogador.atirar());
+        this.adicionarEventos();
+        this.imagemFundo.onload = () => this.loop();
     }
-});
 
-document.addEventListener('keyup', (e) => {
-    teclas[e.key.toLowerCase()] = false;
-});
-
-
-function atualizar() {
-    
-    if (teclas['a']) jogador.mover('esquerda');
-    if (teclas['d']) jogador.mover('direita');
-
-    
-    projeteis.forEach((p, i) => {
-        p.atualizar();
-        if (p.y + p.altura < 0) projeteis.splice(i, 1);
-    });
-
-    
-    aliens.forEach((alien, ai) => {
-        alien.atualizar();
-
-        
-        if (alien.colidiuCom(jogador) || alien.y + alien.altura >= canvas.height) {
-            gameOver = true;
-        }
-
-        
-        projeteis.forEach((proj, pi) => {
-            if (proj.colidiuCom(alien)) {
-                aliens.splice(ai, 1);
-                projeteis.splice(pi, 1);
-                pontuacao += 10;
+    adicionarEventos() {
+        document.addEventListener('keydown', (e) => {
+            this.teclas[e.key.toLowerCase()] = true;
+            if (e.code === 'Space') {
+                this.projeteis.push(this.jogador.atirar());
             }
         });
-    });
 
-    
-    if (Math.random() < 0.02) {
-        let x = Math.random() * (canvas.width - 40);
-        aliens.push(new Alien(x, -40));
+        document.addEventListener('keyup', (e) => {
+            this.teclas[e.key.toLowerCase()] = false;
+        });
+    }
+
+    atualizar() {
+        if (this.teclas['a']) this.jogador.mover('esquerda');
+        if (this.teclas['d']) this.jogador.mover('direita');
+
+        this.projeteis.forEach((p, i) => {
+            p.atualizar();
+            if (p.y + p.altura < 0) this.projeteis.splice(i, 1);
+        });
+
+        this.aliens.forEach((alien, ai) => {
+            alien.atualizar();
+
+            if (alien.colidiuCom(this.jogador) || alien.y + alien.altura >= this.canvas.height) {
+                this.gameOver = true;
+            }
+
+            this.projeteis.forEach((proj, pi) => {
+                if (proj.colidiuCom(alien)) {
+                    this.aliens.splice(ai, 1);
+                    this.projeteis.splice(pi, 1);
+                    this.pontuacao += 10;
+                }
+            });
+        });
+
+        if (Math.random() < 0.02) {
+            let x = Math.random() * (this.canvas.width - 40);
+            this.aliens.push(new Alien(x, -40));
+        }
+    }
+
+    desenharPontuacao() {
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '20px Arial';
+        this.ctx.fillText(`Pontuação: ${this.pontuacao}`, 10, 30);
+    }
+
+    desenhar() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.drawImage(this.imagemFundo, 0, 0, this.canvas.width, this.canvas.height);
+
+        this.jogador.desenhar(this.ctx);
+        this.projeteis.forEach(p => p.desenhar(this.ctx));
+        this.aliens.forEach(a => a.desenhar(this.ctx));
+        this.desenharPontuacao();
+    }
+
+    loop() {
+        if (!this.gameOver) {
+            this.atualizar();
+            this.desenhar();
+            requestAnimationFrame(() => this.loop());
+        } else {
+            this.ctx.fillStyle = 'red';
+            this.ctx.font = '50px Arial';
+            this.ctx.fillText("GAME OVER", this.canvas.width / 2 - 150, this.canvas.height / 2);
+        }
     }
 }
 
-function desenharPontuacao() {
-    ctx.fillStyle = 'white';
-    ctx.font = '20px Arial';
-    ctx.fillText(`Pontuação: ${pontuacao}`, 10, 30);
-}
 
-function desenhar() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    jogador.desenhar();
-    projeteis.forEach(p => p.desenhar());
-    aliens.forEach(a => a.desenhar());
-    desenharPontuacao();
-}
-
-function loop() {
-    if (!gameOver) {
-        atualizar();
-        desenhar();
-        requestAnimationFrame(loop);
-    } else {
-        ctx.fillStyle = 'red';
-        ctx.font = '50px Arial';
-        ctx.fillText("GAME OVER", canvas.width / 2 - 150, canvas.height / 2);
-    }
-}
-
-loop();
+new Jogo('JogoCanvas', 'fundo.jpg');
