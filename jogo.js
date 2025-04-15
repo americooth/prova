@@ -37,7 +37,17 @@ class Jogador extends Entidade {
     }
 
     atirar() {
-        return new Projetil(this.x + this.largura / 2 - 2.5, this.y, 5, 15, 'yellow', -7);
+        return new Projetil(this.x + this.largura / 2 - 2.5, this.y, 5, 15, 'red', -7);
+    }
+
+    desenhar() {
+        ctx.fillStyle = this.cor;
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.largura / 2, this.y); 
+        ctx.lineTo(this.x, this.y + this.altura); 
+        ctx.lineTo(this.x + this.largura, this.y + this.altura); 
+        ctx.closePath();
+        ctx.fill();
     }
 }
 
@@ -61,8 +71,14 @@ class Alien extends Entidade {
     atualizar() {
         this.y += this.velocidade;
     }
-}
 
+    desenhar() {
+        ctx.fillStyle = this.cor;
+        ctx.beginPath();
+        ctx.arc(this.x + this.largura / 2, this.y + this.altura / 2, this.largura / 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
 
 const jogador = new Jogador();
 let projeteis = [];
@@ -70,7 +86,6 @@ let aliens = [];
 let teclas = {};
 let gameOver = false;
 let pontuacao = 0;
-
 
 document.addEventListener('keydown', (e) => {
     teclas[e.key.toLowerCase()] = true;
@@ -83,28 +98,22 @@ document.addEventListener('keyup', (e) => {
     teclas[e.key.toLowerCase()] = false;
 });
 
-
 function atualizar() {
-    
     if (teclas['a']) jogador.mover('esquerda');
     if (teclas['d']) jogador.mover('direita');
 
-    
     projeteis.forEach((p, i) => {
         p.atualizar();
         if (p.y + p.altura < 0) projeteis.splice(i, 1);
     });
 
-    
     aliens.forEach((alien, ai) => {
         alien.atualizar();
 
-        
         if (alien.colidiuCom(jogador) || alien.y + alien.altura >= canvas.height) {
             gameOver = true;
         }
 
-        
         projeteis.forEach((proj, pi) => {
             if (proj.colidiuCom(alien)) {
                 aliens.splice(ai, 1);
@@ -114,7 +123,6 @@ function atualizar() {
         });
     });
 
-    
     if (Math.random() < 0.02) {
         let x = Math.random() * (canvas.width - 40);
         aliens.push(new Alien(x, -40));
